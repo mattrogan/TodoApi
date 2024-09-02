@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TodoApi.Data;
+using TodoApi.MappingProfiles;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,8 @@ builder.Services.AddDbContext<TodoContext>(opts =>
 
 builder.Services.AddScoped<EntityRepositoryFactory>();
 builder.Services.AddTransient(typeof(IRepository<>), typeof(EntityRepository<>));
+
+builder.Services.AddAutoMapper(typeof(PostTodoItemToTodoItemProfile).Assembly);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
