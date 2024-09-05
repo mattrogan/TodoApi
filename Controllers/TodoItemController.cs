@@ -8,7 +8,7 @@ namespace TodoApi.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class TodoController(EntityRepositoryFactory repositoryFactory, IMapper mapper) : ControllerBase
+public class TodoItemController(EntityRepositoryFactory repositoryFactory, IMapper mapper) : ControllerBase
 {
     private readonly IRepository<TodoItem> todoItemRepository = repositoryFactory.RepositoryFor<TodoItem>();
     private readonly IMapper mapper = mapper;
