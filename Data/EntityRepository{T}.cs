@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TodoApi.Data;
 
@@ -14,6 +15,20 @@ public class EntityRepository<T>(TodoContext context) : IRepository<T> where T :
         try
         {
             await context.AddAsync(entity, token);
+            await context.SaveChangesAsync(token);
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> UpdateAsync(T entity, CancellationToken token = default)
+    {
+        try
+        {
+            context.Update(entity);
             await context.SaveChangesAsync(token);
             return true;
         }

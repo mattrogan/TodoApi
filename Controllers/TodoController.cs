@@ -47,6 +47,30 @@ public class TodoController(EntityRepositoryFactory repositoryFactory, IMapper m
 
         return Created(nameof(GetItemAsync), item);
     }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> PutItemAsync(int id, [FromBody] PostTodoItem model, CancellationToken token)
+    {
+        if (model is null || !ModelState.IsValid)
+        {
+            return ValidationProblem(ModelState);
+        }
+
+        var item = await todoItemRepository.SingleAsync(id, token);
+        if (item is null)
+        {
+            return NotFound(id);
+        }
+
+        mapper.Map(model, item);
+
+        if (!await todoItemRepository.UpdateAsync(item, token))
+        {
+            return StatusCode((int)HttpStatusCode.ServiceUnavailable);
+        }
+
+        return Ok(item);
+    }
     
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteItemAsync(int id, CancellationToken token = default)
