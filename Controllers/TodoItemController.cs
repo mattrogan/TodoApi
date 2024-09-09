@@ -1,33 +1,30 @@
 using System.Net;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
-using TodoApi.Data;
 using TodoApi.Models;
+using TodoApi.Services;
 
 namespace TodoApi.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class TodoItemController(EntityRepositoryFactory repositoryFactory, IMapper mapper) : ControllerBase
+public class TodoItemController(TodoItemService service, IMapper mapper) : ControllerBase
 {
-    private readonly IRepository<TodoItem> todoItemRepository = repositoryFactory.RepositoryFor<TodoItem>();
+    private readonly TodoItemService todoItemService = service;
     private readonly IMapper mapper = mapper;
 
     [HttpGet]
     public async Task<IActionResult> GetItemsAsync(CancellationToken token = default)
     {
-        var items = await todoItemRepository.GetAsync(token);
+        var items = await todoItemService.GetItemsAsync(token);
         return Ok(items);
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetItemAsync(int id, CancellationToken token = default)
     {
-        var item = await todoItemRepository.SingleAsync(id, token);
-        IActionResult result = item is null
-            ? NotFound(id)
-            : Ok(item);
-        return result;
+        var item = await todoItemService.GetItemAsync(id, token);
+        return item == null ? NotFound(id) : Ok(item);
     }
 
     [HttpPost]
@@ -38,14 +35,12 @@ public class TodoItemController(EntityRepositoryFactory repositoryFactory, IMapp
             return ValidationProblem(ModelState);
         }
 
-        var item = mapper.Map<TodoItem>(model);
-
-        if (!await todoItemRepository.CreateAsync(item, token))
+        if (!await todoItemService.CreateItemAsync(model, token))
         {
             return StatusCode((int)HttpStatusCode.ServiceUnavailable);
         }
 
-        return Created(nameof(GetItemAsync), item);
+        return Created();
     }
 
     [HttpPut("{id}")]
@@ -56,32 +51,20 @@ public class TodoItemController(EntityRepositoryFactory repositoryFactory, IMapp
             return ValidationProblem(ModelState);
         }
 
-        var item = await todoItemRepository.SingleAsync(id, token);
-        if (item is null)
-        {
-            return NotFound(id);
-        }
-
-        mapper.Map(model, item);
-
-        if (!await todoItemRepository.UpdateAsync(item, token))
+        if (!await todoItemService.UpdateItemAsync(id, model, token))
         {
             return StatusCode((int)HttpStatusCode.ServiceUnavailable);
         }
 
-        return Ok(item);
+        return Ok(model);
     }
     
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteItemAsync(int id, CancellationToken token = default)
     {
-        var item = await todoItemRepository.SingleAsync(id, token);
-        if (item is null)
-            return NotFound(id);
-
-        if (!await todoItemRepository.DeleteAsync(item, token))
+        if (!await todoItemService.DeleteItemAsync(id, token))
         {
-            return StatusCode((int)HttpStatusCode.ServiceUnavailable);
+            return StatusCode((int)HttpStatusCode.NotFound);
         }
 
         return NoContent();
