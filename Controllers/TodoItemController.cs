@@ -1,5 +1,6 @@
 using System.Net;
 using AutoMapper;
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using TodoApi.Models;
 using TodoApi.Services;
@@ -8,10 +9,11 @@ namespace TodoApi.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class TodoItemController(TodoItemService service, IMapper mapper) : ControllerBase
+public class TodoItemController(ITodoItemService service, IMapper mapper, IValidator<PostTodoItem> validator) : ControllerBase
 {
-    private readonly TodoItemService todoItemService = service;
+    private readonly ITodoItemService todoItemService = service;
     private readonly IMapper mapper = mapper;
+    private readonly IValidator<PostTodoItem> validator = validator;
 
     [HttpGet]
     public async Task<IActionResult> GetItemsAsync(CancellationToken token = default)
@@ -30,8 +32,13 @@ public class TodoItemController(TodoItemService service, IMapper mapper) : Contr
     [HttpPost]
     public async Task<IActionResult> PostItemAsync([FromBody] PostTodoItem model, CancellationToken token = default)
     {
-        if (model is null || !ModelState.IsValid)
+        var validationResult = validator.Validate(model);
+        if (!validationResult.IsValid)
         {
+            foreach (var error in validationResult.Errors)
+            {
+                ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
+            }
             return ValidationProblem(ModelState);
         }
 
@@ -40,20 +47,25 @@ public class TodoItemController(TodoItemService service, IMapper mapper) : Contr
             return StatusCode((int)HttpStatusCode.ServiceUnavailable);
         }
 
-        return Created();
+        return Created(nameof(this.GetItemAsync), model);
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> PutItemAsync(int id, [FromBody] PostTodoItem model, CancellationToken token)
     {
-        if (model is null || !ModelState.IsValid)
+        var validationResult = validator.Validate(model);
+        if (!validationResult.IsValid)
         {
+            foreach (var error in validationResult.Errors)
+            {
+                ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
+            }
             return ValidationProblem(ModelState);
         }
 
         if (!await todoItemService.UpdateItemAsync(id, model, token))
         {
-            return StatusCode((int)HttpStatusCode.ServiceUnavailable);
+            return NotFound();
         }
 
         return Ok(model);

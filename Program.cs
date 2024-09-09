@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TodoApi.Data;
 using TodoApi.MappingProfiles;
 using TodoApi.Services;
+using FluentValidation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,10 +17,11 @@ builder.Services.AddDbContext<TodoContext>(opts =>
     opts.UseSqlite($"Data Source={path}");
 });
 
-builder.Services.AddScoped<TodoItemService>();
+builder.Services.AddScoped<ITodoItemService, TodoItemService>();
 builder.Services.AddScoped(typeof(IRepository<>), typeof(EntityRepository<>));
 
 builder.Services.AddAutoMapper(typeof(PostTodoItemToTodoItemProfile).Assembly);
+builder.Services.AddValidatorsFromAssemblyContaining<PostTodoItemValidator>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
