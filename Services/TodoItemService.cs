@@ -12,10 +12,11 @@ public class TodoItemService(IRepository<TodoItem> repository, IMapper mapper) :
     private readonly IRepository<TodoItem> _repository = repository;
     private readonly IMapper _mapper = mapper;
 
-    public async Task<bool> CreateItemAsync(PostTodoItem model, CancellationToken token = default)
+    public async Task<TodoItem?> CreateItemAsync(PostTodoItem model, CancellationToken token = default)
     {
         var item = _mapper.Map<TodoItem>(model);
-        return await _repository.CreateAsync(item, token);
+        var createdItem = await _repository.CreateAsync(item, token);
+        return createdItem;
     }
 
     public async Task<bool> DeleteItemAsync(int id, CancellationToken token = default)
@@ -29,7 +30,7 @@ public class TodoItemService(IRepository<TodoItem> repository, IMapper mapper) :
         return await _repository.DeleteAsync(item, token);
     }
 
-    public async Task<TodoItem> GetItemAsync(int id, CancellationToken token = default)
+    public async Task<TodoItem?> GetItemAsync(int id, CancellationToken token = default)
         => await _repository.SingleAsync(id, token);
 
     public async Task<IEnumerable<TodoItem>> GetItemsAsync(CancellationToken token = default)
