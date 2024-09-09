@@ -42,12 +42,13 @@ public class TodoItemController(ITodoItemService service, IMapper mapper, IValid
             return ValidationProblem(ModelState);
         }
 
-        if (!await todoItemService.CreateItemAsync(model, token))
+        var item = await todoItemService.CreateItemAsync(model, token);
+        if (item is null)
         {
             return StatusCode((int)HttpStatusCode.ServiceUnavailable);
         }
 
-        return Created(nameof(this.GetItemAsync), model);
+        return Created(nameof(this.GetItemAsync), new { id = item.Id });
     }
 
     [HttpPut("{id}")]
@@ -76,7 +77,7 @@ public class TodoItemController(ITodoItemService service, IMapper mapper, IValid
     {
         if (!await todoItemService.DeleteItemAsync(id, token))
         {
-            return StatusCode((int)HttpStatusCode.NotFound);
+            return NotFound();
         }
 
         return NoContent();
