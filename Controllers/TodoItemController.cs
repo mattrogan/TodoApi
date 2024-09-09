@@ -1,87 +1,83 @@
 using System.Net;
 using AutoMapper;
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
-using TodoApi.Data;
 using TodoApi.Models;
+using TodoApi.Services;
 
 namespace TodoApi.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class TodoItemController(EntityRepositoryFactory repositoryFactory, IMapper mapper) : ControllerBase
+public class TodoItemController(ITodoItemService service, IMapper mapper, IValidator<PostTodoItem> validator) : ControllerBase
 {
-    private readonly IRepository<TodoItem> todoItemRepository = repositoryFactory.RepositoryFor<TodoItem>();
+    private readonly ITodoItemService todoItemService = service;
     private readonly IMapper mapper = mapper;
+    private readonly IValidator<PostTodoItem> validator = validator;
 
     [HttpGet]
     public async Task<IActionResult> GetItemsAsync(CancellationToken token = default)
     {
-        var items = await todoItemRepository.GetAsync(token);
+        var items = await todoItemService.GetItemsAsync(token);
         return Ok(items);
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetItemAsync(int id, CancellationToken token = default)
     {
-        var item = await todoItemRepository.SingleAsync(id, token);
-        IActionResult result = item is null
-            ? NotFound(id)
-            : Ok(item);
-        return result;
+        var item = await todoItemService.GetItemAsync(id, token);
+        return item == null ? NotFound(id) : Ok(item);
     }
 
     [HttpPost]
     public async Task<IActionResult> PostItemAsync([FromBody] PostTodoItem model, CancellationToken token = default)
     {
-        if (model is null || !ModelState.IsValid)
+        var validationResult = validator.Validate(model);
+        if (!validationResult.IsValid)
         {
+            foreach (var error in validationResult.Errors)
+            {
+                ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
+            }
             return ValidationProblem(ModelState);
         }
 
-        var item = mapper.Map<TodoItem>(model);
-
-        if (!await todoItemRepository.CreateAsync(item, token))
+        var item = await todoItemService.CreateItemAsync(model, token);
+        if (item is null)
         {
             return StatusCode((int)HttpStatusCode.ServiceUnavailable);
         }
 
-        return Created(nameof(GetItemAsync), item);
+        return Created(nameof(this.GetItemAsync), new { id = item.Id });
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> PutItemAsync(int id, [FromBody] PostTodoItem model, CancellationToken token)
     {
-        if (model is null || !ModelState.IsValid)
+        var validationResult = validator.Validate(model);
+        if (!validationResult.IsValid)
         {
+            foreach (var error in validationResult.Errors)
+            {
+                ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
+            }
             return ValidationProblem(ModelState);
         }
 
-        var item = await todoItemRepository.SingleAsync(id, token);
-        if (item is null)
+        if (!await todoItemService.UpdateItemAsync(id, model, token))
         {
-            return NotFound(id);
+            return NotFound();
         }
 
-        mapper.Map(model, item);
-
-        if (!await todoItemRepository.UpdateAsync(item, token))
-        {
-            return StatusCode((int)HttpStatusCode.ServiceUnavailable);
-        }
-
-        return Ok(item);
+        return Ok(model);
     }
     
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteItemAsync(int id, CancellationToken token = default)
     {
-        var item = await todoItemRepository.SingleAsync(id, token);
-        if (item is null)
-            return NotFound(id);
-
-        if (!await todoItemRepository.DeleteAsync(item, token))
+        if (!await todoItemService.DeleteItemAsync(id, token))
         {
-            return StatusCode((int)HttpStatusCode.ServiceUnavailable);
+            return NotFound();
         }
 
         return NoContent();

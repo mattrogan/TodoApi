@@ -8,19 +8,19 @@ public class EntityRepository<T>(TodoContext context) : IRepository<T> where T :
 
     public async Task<IEnumerable<T>> GetAsync(CancellationToken token = default) => await context.Set<T>().ToListAsync(token);
 
-    public async Task<T> SingleAsync(int id, CancellationToken token = default) => await context.Set<T>().FindAsync([id], token);
+    public async Task<T?> SingleAsync(int id, CancellationToken token = default) => await context.Set<T>().FindAsync([id], token);
 
-    public async Task<bool> CreateAsync(T entity, CancellationToken token = default)
+    public async Task<T?> CreateAsync(T entity, CancellationToken token = default)
     {
         try
         {
             await context.AddAsync(entity, token);
             await context.SaveChangesAsync(token);
-            return true;
+            return entity;
         }
         catch (DbUpdateException)
         {
-            return false;
+            return null;
         }
     }
 
